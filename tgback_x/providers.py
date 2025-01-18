@@ -48,11 +48,17 @@ class Provider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get(self, key: Key) -> TelegramClient:
+    def get(self, key: Key, raw_data=None) -> TelegramClient:
         """
         This method should return stored client object by key.
         Key -> KeyID -> Get data by KeyID -> decrypt data with
         Key using Protocol -> Restore and return client.
+
+        You should implement a support for Raw data. Raw data
+        is an encrypted and encoded backup data produced by
+        Protocol that you directly store on Provider's side, so
+        instead of obtaining it through key, you should be able
+        to get it from user.
         """
         raise NotImplementedError
 
@@ -151,12 +157,18 @@ class TelegramChannel(Provider):
 
         return channel
 
-    def get(self, key: Key) -> TelegramClient:
+    def get(self, key: Key, raw_data=None) -> TelegramClient:
         """
         Will return a TelegramClient object if key is
         linked to an active Telegram session X-Backup.
+
+        You can specify Backup data directly in raw_data
+        if it's impossible to fetch from the Provider.
         """
-        data = self._get_data(key.id)
+        if raw_data:
+            data = raw_data.replace('+T+', '') # If in data.
+        else:
+            data = self._get_data(key.id)
 
         p = JSON_AES_CBC_UB64(key)
         data = p.extract(data)
@@ -193,11 +205,28 @@ class TelegramChannel(Provider):
         except (ValueError, UsernameNotOccupiedError) as e:
             raise NoDataByKeyID(NoDataByKeyID.__doc__) from e
         try:
+            not_enough_rights = None
             client(DeleteChannelRequest(channel))
         except ChatAdminRequiredError as e:
+            not_enough_rights = e
+        try:
+            # We will always try to force disconnect a session even if
+            # we don't have rights to modify a Backup channel. This
+            # may be important: if someone else will get into User
+            # account through backup, we would WANT to provide them
+            # at least ability to destroy this session for all.
+            client.log_out()
+        except Exception as e:
+            raise SessionDisconnected(
+                "Impossible to disconnect session. Either it was "
+                "disconnected prior or there is some problem. Try "
+                "again or disconnect manually in Telegram settings "
+                "-> Devices.") from e
+
+        if not_enough_rights:
             raise NotEnoughRights(
                 "You don't have enough rights to be able "
-                "to remove storage Channel.") from e
+                "to remove storage Channel.") from not_enough_rights
 
 
 # Maps are used by the Universal classes. If you
