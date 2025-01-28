@@ -7,6 +7,7 @@ from . import errors
 from . import tools
 
 from telethon import TelegramClient
+from telethon.sessions import StringSession
 
 __author__ = 'NonProjects'
 __version__ = version.VERSION
