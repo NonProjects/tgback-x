@@ -23,6 +23,6 @@ setup(
     install_requires = [
         'pyaes==1.6.1',
         'telethon==1.38.1',
-        'phrasegen==1.0.0'
+        'phrasegen<2'
     ],
 )
