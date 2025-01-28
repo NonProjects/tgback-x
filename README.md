@@ -32,3 +32,60 @@ I (hope I) made **TGBACK-X** library modular, so you can create your own *Provid
 ```
 pip install tgback-x
 ```
+
+### Quick Example
+
+**Store Session (Create backup)**
+
+```python3
+import tgback_x
+import phrasegen
+
+API_ID: int=1234567 # Obtain at my.telegram.org
+API_HASH: str='00000000000000000000000000000000'
+
+client = tgback_x.TelegramClient(
+    session=tgback_x.StringSession(),
+    api_id=API_ID,
+    api_hash=API_HASH
+)
+# You can also Sign-In with the .send_code_request() and
+# the .sign_in() method, as this is just a quick example. See
+# docs.telethon.dev/en/stable/quick-references/client-reference.html
+client.start()
+
+generator = phrasegen.Generator()
+phrase = generator.en.generate()
+
+print('Your phrase is', phrase)
+
+# Customizable. Unique Salt is highly recommendable.
+key = tgback_x.crypto.make_scrypt_key(phrase.encode())
+
+provider = tgback_x.providers.TelegramChannel()
+provider.store(tgback_x.crypto.Key(key), client)
+```
+
+**Get Session (Load backup)**
+```python3
+import tgback_x
+
+phrase = b'here comes your phrase dio ozzy'
+key = tgback_x.crypto.make_scrypt_key(phrase)
+
+provider = tgback_x.providers.TelegramChannel()
+client = provider.get(tgback_x.crypto.Key(key))
+
+print(client.get_me())
+```
+
+**Destroy Session & Backup**
+```python3
+import tgback_x
+
+phrase = b'here comes your phrase dio ozzy'
+key = tgback_x.crypto.make_scrypt_key(phrase)
+
+provider = tgback_x.providers.TelegramChannel()
+provider.destroy(tgback_x.crypto.Key(key))
+```
