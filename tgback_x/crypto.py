@@ -1,4 +1,5 @@
 from hashlib import scrypt
+from typing import Union
 from os import urandom
 from hmac import HMAC
 
@@ -8,7 +9,7 @@ from .defaults import Scrypt
 from .tools import make_key_id
 
 __all__ = [
-    'Key', 'KeyAES', 'AES', 'make_scrypt_key', 
+    'Key', 'KeyAES', 'AES', 'make_scrypt_key',
     'get_rnd_bytes', 'KEY_MAP'
 ]
 
@@ -20,7 +21,9 @@ class Key:
     """
     _REQ_LENGTH = 0 # Required bytelength for your Key
 
-    def __init__(self, key: bytes):
+    def __init__(self, key: Union[str, bytes]):
+        key = key.encode() if isinstance(key, str) else key
+
         if self._REQ_LENGTH and len(key) != self._REQ_LENGTH:
             raise ValueError(f'Key length must be {self._REQ_LENGTH}')
         self._key = key
@@ -55,9 +58,12 @@ class Key:
         return cls(get_rnd_bytes(cls._REQ_LENGTH))
 
 class KeyAES(Key):
+    """
+    KeyAES is a wrapper for 32-byte long Key.
+    """
     _REQ_LENGTH = 32
 
-    def __init__(self, key: bytes):
+    def __init__(self, key: Union[str, bytes]):
         super().__init__(key)
 
 class AES:
@@ -69,7 +75,7 @@ class AES:
     also add HMAC-SHA256 over IV + Encrypted Data
     and append it to Encrypted Data (last 32 bytes).
     """
-    @staticmethod    
+    @staticmethod
     def encrypt(key: KeyAES, data: bytes) -> bytes:
         """
         Arguments:
@@ -86,7 +92,7 @@ class AES:
         data = iv + cbc256.feed(data) + cbc256.feed()
         hmac = HMAC(hmackey.digest(), data, digestmod='sha256')
         return data + hmac.digest()
-    
+
     @staticmethod
     def decrypt(key: KeyAES, data: bytes) -> bytes:
         """
